@@ -70,7 +70,9 @@ import 'package:my_app/features/features.dart';
 
 Spacing uses **raw numbers** (`context.verticalSpace(16)`) — no `Sizes` class.
 
-Template sources live under `templates/<framework>/` as `*.tmpl` (e.g. `foo.dart.tmpl`) so Dart/TS/Go language servers don’t lint placeholder files. Future frameworks follow the same rule.
+Template sources live under `templates/<framework>/` as `*.tmpl` (e.g. `foo.dart.tmpl`) so language servers don’t treat placeholders as real code. Future frameworks use the same rule. Dart analysis is also excluded via `analysis_options.yaml`.
+
+`.vscode/` is gitignored on purpose (keep editor settings local).
 
 ## Backups
 
