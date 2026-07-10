@@ -3,7 +3,7 @@
 Interactive CLI that scaffolds a scalable Flutter codebase in one command.  
 More frameworks (React, NestJS, Go, …) coming later.
 
-**npm:** [`@inemesitmatthew/scaffolder`](https://www.npmjs.com/package/@inemesitmatthew/scaffolder)  
+**npm:** [`@senmid/scaffolder`](https://www.npmjs.com/package/@senmid/scaffolder)  
 **GitHub:** https://github.com/InemesitMatthew/scaffolder
 
 ## Requirements
@@ -14,13 +14,13 @@ More frameworks (React, NestJS, Go, …) coming later.
 ## Install
 
 ```bash
-npx @inemesitmatthew/scaffolder
+npx @senmid/scaffolder
 ```
 
 Or globally:
 
 ```bash
-npm i -g @inemesitmatthew/scaffolder
+npm i -g @senmid/scaffolder
 scaffolder
 ```
 
@@ -38,7 +38,7 @@ scaffolder
 ## Quick start
 
 ```bash
-npx @inemesitmatthew/scaffolder
+npx @senmid/scaffolder
 # or: scaffolder
 ```
 
