@@ -1,0 +1,13 @@
+# Pack only what `files` in package.json lists — do not inherit .gitignore's dist/ exclude.
+src/
+test/
+*.tsbuildinfo
+.eslintrc*
+eslint.config.js
+tsconfig.json
+.git/
+.github/
+.vscode/
+*.log
+.env
+.env.*
