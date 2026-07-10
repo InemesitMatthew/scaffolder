@@ -70,6 +70,8 @@ import 'package:my_app/features/features.dart';
 
 Spacing uses **raw numbers** (`context.verticalSpace(16)`) — no `Sizes` class.
 
+Template sources live under `templates/<framework>/` as `*.tmpl` (e.g. `foo.dart.tmpl`) so Dart/TS/Go language servers don’t lint placeholder files. Future frameworks follow the same rule.
+
 ## Backups
 
 Before overwriting `main.dart` / `pubspec.yaml`, scaffolder writes `*.scaffolder.bak`.

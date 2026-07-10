@@ -12,6 +12,7 @@ import {
   toAppClassName,
   normalizeDartColor,
   renderTemplate,
+  stripTmplExtension,
 } from '../src/utils/render.js';
 
 describe('toPackageName', () => {
@@ -101,6 +102,14 @@ describe('toAppClassName', () => {
   it('builds PascalCase App suffix', () => {
     assert.equal(toAppClassName('my_app'), 'MyApp');
     assert.equal(toAppClassName('sen'), 'SenApp');
+  });
+});
+
+describe('stripTmplExtension', () => {
+  it('strips .tmpl suffix', () => {
+    assert.equal(stripTmplExtension('foo.dart.tmpl'), 'foo.dart');
+    assert.equal(stripTmplExtension('a/b.ts.tmpl'), 'a/b.ts');
+    assert.equal(stripTmplExtension('readme.md'), 'readme.md');
   });
 });
 

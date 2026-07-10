@@ -11,7 +11,7 @@ import {
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FlutterScaffoldOptions } from '../types.js';
-import { renderTemplate, type TemplateVars } from '../../utils/render.js';
+import { renderTemplate, stripTmplExtension, type TemplateVars } from '../../utils/render.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -103,7 +103,8 @@ export function copyRenderedLibTemplates(
 
   for (const file of walkFiles(libTemplates)) {
     const rel = relative(libTemplates, file);
-    const dest = join(projectPath, 'lib', rel);
+    const outRel = stripTmplExtension(rel);
+    const dest = join(projectPath, 'lib', outRel);
     const raw = readFileSync(file, 'utf8');
     const rendered = renderTemplate(raw, vars);
     if (rendered.includes('{{')) {
@@ -113,7 +114,7 @@ export function copyRenderedLibTemplates(
     }
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, rendered, 'utf8');
-    written.push(rel);
+    written.push(outRel);
   }
 
   return written;

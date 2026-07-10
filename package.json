@@ -32,7 +32,8 @@
     "templates",
     "docs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "analysis_options.yaml"
   ],
   "dependencies": {
     "@clack/prompts": "^0.10.1",

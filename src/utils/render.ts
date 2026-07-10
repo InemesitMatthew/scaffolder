@@ -1,5 +1,10 @@
 export type TemplateVars = Record<string, string | number>;
 
+/** Strip trailing `.tmpl` so `foo.dart.tmpl` → `foo.dart` (multi-lang safe). */
+export function stripTmplExtension(relPath: string): string {
+  return relPath.replace(/\.tmpl$/i, '');
+}
+
 /** Replace {{key}} placeholders. Keys are matched case-sensitively. */
 export function renderTemplate(content: string, vars: TemplateVars): string {
   return content.replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
