@@ -1,0 +1,22 @@
+/// Compile-time config via `--dart-define`.
+///
+/// Example:
+/// `flutter run --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=https://api.example.com`
+abstract class AppConfig {
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.example.com',
+  );
+
+  static const String env = String.fromEnvironment(
+    'APP_ENV',
+    defaultValue: 'dev',
+  );
+
+  static const bool isVerbose = bool.fromEnvironment(
+    'VERBOSE',
+    defaultValue: false,
+  );
+
+  static bool get isProd => env == 'prod';
+}

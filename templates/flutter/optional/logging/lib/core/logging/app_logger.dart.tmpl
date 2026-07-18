@@ -1,0 +1,28 @@
+import 'package:talker_flutter/talker_flutter.dart';
+
+/// Shared Talker instance — created before GetIt / GoRouter wire-up.
+final appTalker = TalkerFlutter.init();
+
+class AppLogger {
+  AppLogger([Talker? talker]) : _talker = talker ?? appTalker;
+
+  final Talker _talker;
+
+  Talker get talker => _talker;
+
+  void info(String message, [Object? exception, StackTrace? stackTrace]) {
+    _talker.info(message, exception, stackTrace);
+  }
+
+  void warn(String message, [Object? exception, StackTrace? stackTrace]) {
+    _talker.warning(message, exception, stackTrace);
+  }
+
+  void error(String message, [Object? exception, StackTrace? stackTrace]) {
+    _talker.error(message, exception, stackTrace);
+  }
+
+  void debug(String message, [Object? exception, StackTrace? stackTrace]) {
+    _talker.debug(message, exception, stackTrace);
+  }
+}

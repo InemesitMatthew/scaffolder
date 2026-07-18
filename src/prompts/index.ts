@@ -1,5 +1,6 @@
 import * as p from '@clack/prompts';
 import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import pc from 'picocolors';
 import { frameworks, getFramework } from '../registry/frameworks.js';
 import type { FlutterMode, FlutterScaffoldOptions } from '../generators/types.js';
@@ -16,6 +17,7 @@ import {
   assertPositiveNumber,
   assertWritablePathHint,
   assertInjectProjectPath,
+  assertCreateTargetAvailable,
   normalizeUserPath,
   readPubspecPackageName,
 } from '../utils/validate.js';
@@ -31,9 +33,14 @@ export interface CliFlags {
   baseWidth?: string;
   baseHeight?: string;
   force?: boolean;
-  /** true = sample shell, false = flat placeholder, undefined = ask / default false */
   withShell?: boolean;
-  /** true = remove bak after, false = keep, undefined = ask */
+  withNetwork?: boolean;
+  withSampleFeature?: boolean;
+  withAuth?: boolean;
+  withL10n?: boolean;
+  withLogging?: boolean;
+  withEnv?: boolean;
+  withCi?: boolean;
   cleanBackups?: boolean;
 }
 
@@ -43,6 +50,27 @@ const DESIGN_DEFAULTS = {
   baseWidth: 390,
   baseHeight: 844,
 } as const;
+
+type ExtraKey =
+  | 'shell'
+  | 'network'
+  | 'sampleFeature'
+  | 'auth'
+  | 'l10n'
+  | 'logging'
+  | 'env'
+  | 'ci';
+
+interface ExtrasSelection {
+  withShell: boolean;
+  withNetwork: boolean;
+  withSampleFeature: boolean;
+  withAuth: boolean;
+  withL10n: boolean;
+  withLogging: boolean;
+  withEnv: boolean;
+  withCi: boolean;
+}
 
 function isCancel(value: unknown): boolean {
   return p.isCancel(value);
@@ -56,6 +84,10 @@ function assertDartColor(input: string): string {
     );
   }
   return normalized;
+}
+
+function flagOrDefault(flag: boolean | undefined, fallback: boolean): boolean {
+  return flag !== undefined ? flag : fallback;
 }
 
 async function promptDesignOptions(flags: CliFlags): Promise<{
@@ -199,19 +231,97 @@ async function promptDesignOptions(flags: CliFlags): Promise<{
   };
 }
 
-async function promptWithShell(flags: CliFlags, interactive: boolean): Promise<boolean> {
-  if (flags.withShell !== undefined) return flags.withShell;
-  if (!interactive) return false;
+async function promptExtras(
+  flags: CliFlags,
+  interactive: boolean,
+): Promise<ExtrasSelection> {
+  const fromFlags: ExtrasSelection = {
+    withShell: flagOrDefault(flags.withShell, false),
+    withNetwork: flagOrDefault(flags.withNetwork, false),
+    withSampleFeature: flagOrDefault(flags.withSampleFeature, false),
+    withAuth: flagOrDefault(flags.withAuth, false),
+    withL10n: flagOrDefault(flags.withL10n, false),
+    withLogging: flagOrDefault(flags.withLogging, false),
+    withEnv: flagOrDefault(flags.withEnv, false),
+    withCi: flagOrDefault(flags.withCi, false),
+  };
 
-  const answer = await p.confirm({
-    message: 'Include optional sample tab shell (StatefulShellRoute)?',
-    initialValue: false,
+  const anyFlagSet =
+    flags.withShell !== undefined ||
+    flags.withNetwork !== undefined ||
+    flags.withSampleFeature !== undefined ||
+    flags.withAuth !== undefined ||
+    flags.withL10n !== undefined ||
+    flags.withLogging !== undefined ||
+    flags.withEnv !== undefined ||
+    flags.withCi !== undefined;
+
+  if (!interactive || anyFlagSet) {
+    return fromFlags;
+  }
+
+  const selected = await p.multiselect({
+    message: 'Optional extras (reduce later setup) — Space to toggle, Enter to confirm',
+    required: false,
+    options: [
+      {
+        value: 'shell',
+        label: 'Sample tab shell',
+        hint: 'StatefulShellRoute Home / Search / Settings',
+      },
+      {
+        value: 'network',
+        label: 'Network stack',
+        hint: 'Dio ApiClient + Failure/Result',
+      },
+      {
+        value: 'sampleFeature',
+        label: 'Sample CA feature',
+        hint: 'Splash repo + Riverpod notifier',
+      },
+      {
+        value: 'auth',
+        label: 'Auth stub',
+        hint: 'Auth feature + secure storage hook',
+      },
+      {
+        value: 'l10n',
+        label: 'Localization',
+        hint: 'l10n.yaml + en arb',
+      },
+      {
+        value: 'logging',
+        label: 'Logging',
+        hint: 'talker_flutter + route observer',
+      },
+      {
+        value: 'env',
+        label: 'Env / config',
+        hint: 'AppConfig via --dart-define',
+      },
+      {
+        value: 'ci',
+        label: 'CI workflow',
+        hint: 'GitHub Actions analyze + test',
+      },
+    ],
   });
-  if (isCancel(answer)) {
+  if (isCancel(selected)) {
     p.cancel('Cancelled.');
     process.exit(0);
   }
-  return Boolean(answer);
+
+  const set = new Set(selected as ExtraKey[]);
+  return {
+    withShell: set.has('shell'),
+    withNetwork: set.has('network'),
+    withSampleFeature: set.has('sampleFeature'),
+    withAuth: set.has('auth'),
+    withL10n: set.has('l10n'),
+    withLogging: set.has('logging'),
+    withEnv: set.has('env'),
+    withCi: set.has('ci'),
+  };
 }
 
 export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOptions> {
@@ -284,7 +394,6 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
   let org = flags.org ?? 'com.example';
 
   if (mode === 'inject') {
-    // Path first → read package name from pubspec
     if (flags.path) {
       outputPath = assertInjectProjectPath(flags.path);
     } else {
@@ -325,7 +434,6 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
       org = assertOrg(flags.org);
     }
   } else {
-    // create: name → org → output folder
     let nameInput = flags.name;
     if (!nameInput) {
       const name = await p.text({
@@ -382,7 +490,11 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
         initialValue: `./${packageName}`,
         validate: (v) => {
           try {
-            normalizeUserPath(v ?? '');
+            const normalized = normalizeUserPath(v ?? '');
+            const resolved = resolve(normalized);
+            if (existsSync(resolved)) {
+              return `Target already exists: ${resolved}. Use inject mode or pick another path.`;
+            }
             return undefined;
           } catch (e) {
             return e instanceof Error ? e.message : 'Invalid path';
@@ -397,6 +509,8 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
       assertWritablePathHint(normalized);
       outputPath = resolve(normalized);
     }
+
+    assertCreateTargetAvailable(outputPath);
   }
 
   const design = await promptDesignOptions(flags);
@@ -411,7 +525,7 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
     Boolean(flags.path) &&
     (mode === 'inject' || Boolean(flags.name));
 
-  const withShell = await promptWithShell(flags, !isNonInteractive);
+  const extras = await promptExtras(flags, !isNonInteractive);
 
   const options: FlutterScaffoldOptions = {
     framework: 'flutter',
@@ -430,7 +544,7 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
       DESIGN_DEFAULTS.baseHeight,
     ),
     force: Boolean(flags.force),
-    withShell,
+    ...extras,
     cleanBackups: flags.cleanBackups,
     appClassName: toAppClassName(packageName),
     appTitle: toAppTitle(packageName),

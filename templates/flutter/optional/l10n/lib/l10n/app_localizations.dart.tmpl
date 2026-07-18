@@ -1,0 +1,41 @@
+// GENERATED PLACEHOLDER — run `flutter gen-l10n` after pub get.
+// This stub keeps analyze green before the first gen-l10n pass.
+
+import 'package:flutter/widgets.dart';
+
+class AppLocalizations {
+  AppLocalizations(this.locale);
+
+  final Locale locale;
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  static const List<Locale> supportedLocales = [
+    Locale('en'),
+  ];
+
+  static AppLocalizations of(BuildContext context) {
+    final value = Localizations.of<AppLocalizations>(context, AppLocalizations);
+    assert(value != null, 'No AppLocalizations found in context');
+    return value!;
+  }
+
+  String get appTitle => '{{appTitle}}';
+  String get homePlaceholder => 'Replace this placeholder after scaffolding.';
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => locale.languageCode == 'en';
+
+  @override
+  Future<AppLocalizations> load(Locale locale) async =>
+      AppLocalizations(locale);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}

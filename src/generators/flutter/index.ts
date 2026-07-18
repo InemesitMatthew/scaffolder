@@ -6,15 +6,41 @@ import { isFlutterAvailable, runFlutterCreate } from './flutter_create.js';
 import {
   assertInjectTarget,
   assertNoOverwrite,
+  cleanupLeftoverShell,
   copyRenderedLibTemplates,
   copyPackageAssetPlaceholders,
   patchPubspec,
   removeDefaultCounterApp,
+  writeAnalysisOptions,
+  writeCiWorkflow,
   writeMainDart,
   markFailedCreate,
 } from './inject.js';
-import { assertCreateParentExists } from '../../utils/validate.js';
+import {
+  assertCreateParentExists,
+  assertCreateTargetAvailable,
+} from '../../utils/validate.js';
 import { listScaffolderBackups } from '../../utils/backups.js';
+
+function pushExtraMessages(
+  messages: string[],
+  options: FlutterScaffoldOptions,
+): void {
+  const extras: string[] = [];
+  if (options.withShell) extras.push('shell');
+  if (options.withNetwork) extras.push('network');
+  if (options.withSampleFeature) extras.push('sample-feature');
+  if (options.withAuth) extras.push('auth');
+  if (options.withL10n) extras.push('l10n');
+  if (options.withLogging) extras.push('logging');
+  if (options.withEnv) extras.push('env');
+  if (options.withCi) extras.push('ci');
+  if (extras.length === 0) {
+    messages.push(pc.dim('Extras: none (baseline only)'));
+  } else {
+    messages.push(pc.dim(`Extras: ${extras.join(', ')}`));
+  }
+}
 
 export async function runFlutterGenerator(
   options: FlutterScaffoldOptions,
@@ -32,6 +58,7 @@ export async function runFlutterGenerator(
         );
       }
       assertCreateParentExists(projectPath);
+      assertCreateTargetAvailable(projectPath);
       messages.push(pc.dim('Running flutter create…'));
       await runFlutterCreate({
         projectName: options.packageName,
@@ -46,15 +73,14 @@ export async function runFlutterGenerator(
 
     assertNoOverwrite(projectPath, options.force);
 
+    const shellCleanup = cleanupLeftoverShell(projectPath, options);
+    if (shellCleanup) messages.push(pc.dim(shellCleanup));
+
     const written = copyRenderedLibTemplates(projectPath, options);
     messages.push(
       pc.green(`Injected ${written.length} template files under lib/`),
     );
-    if (options.withShell) {
-      messages.push(pc.dim('Included optional sample StatefulShellRoute'));
-    } else {
-      messages.push(pc.dim('Flat post-splash Home placeholder (no sample shell)'));
-    }
+    pushExtraMessages(messages, options);
 
     const { backedUp } = writeMainDart(projectPath, options);
     messages.push(
@@ -70,6 +96,21 @@ export async function runFlutterGenerator(
       pc.green('Patched pubspec.yaml (backup: pubspec.yaml.scaffolder.bak)'),
     );
 
+    const analysis = writeAnalysisOptions(projectPath);
+    if (analysis.written) {
+      messages.push(
+        pc.green(
+          analysis.backedUp
+            ? 'Wrote analysis_options.yaml (backup: analysis_options.yaml.scaffolder.bak)'
+            : 'Wrote analysis_options.yaml',
+        ),
+      );
+    }
+
+    if (writeCiWorkflow(projectPath, options)) {
+      messages.push(pc.green('Added .github/workflows/flutter_ci.yml'));
+    }
+
     copyPackageAssetPlaceholders(projectPath);
     removeDefaultCounterApp(projectPath);
 
@@ -81,7 +122,16 @@ export async function runFlutterGenerator(
     messages.push(pc.bold('Next steps:'));
     messages.push(`  cd ${projectPath}`);
     messages.push('  flutter pub get');
-    messages.push('  flutter run');
+    if (options.withL10n) {
+      messages.push('  flutter gen-l10n');
+    }
+    if (options.withEnv) {
+      messages.push(
+        '  flutter run --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=https://api.example.com',
+      );
+    } else {
+      messages.push('  flutter run');
+    }
     messages.push('');
     messages.push(
       pc.dim(
@@ -94,12 +144,8 @@ export async function runFlutterGenerator(
       for (const b of backups) {
         messages.push(pc.dim(`  - ${b}`));
       }
-      messages.push(
-        pc.dim('  Restore: scaffolder restore <project>'),
-      );
-      messages.push(
-        pc.dim('  Clean:   scaffolder clean-backups <project>'),
-      );
+      messages.push(pc.dim('  Restore: scaffolder restore <project>'));
+      messages.push(pc.dim('  Clean:   scaffolder clean-backups <project>'));
     }
 
     return { projectPath, mode: options.mode, messages, backups };

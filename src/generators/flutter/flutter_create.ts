@@ -21,6 +21,7 @@ export async function runFlutterCreate(options: {
   const parent = resolve(options.outputPath, '..');
   const projectDir = resolve(options.outputPath);
 
+  // Caller should assertCreateTargetAvailable first; keep as safety net.
   if (existsSync(projectDir)) {
     throw new Error(
       `Target already exists: ${projectDir}. Use inject mode or pick another path.`,

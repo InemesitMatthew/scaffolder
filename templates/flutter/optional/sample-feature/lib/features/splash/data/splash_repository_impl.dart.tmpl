@@ -1,0 +1,9 @@
+import 'package:{{packageName}}/features/features.dart';
+
+class SplashRepositoryImpl implements SplashRepository {
+  @override
+  Future<BootstrapStatus> loadBootstrap() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    return const BootstrapStatus(message: 'Ready', isReady: true);
+  }
+}

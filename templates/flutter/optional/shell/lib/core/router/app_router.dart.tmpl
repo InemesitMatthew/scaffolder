@@ -1,21 +1,15 @@
 import 'package:go_router/go_router.dart';
+{{routerLoggingImports}}import 'app_routes.dart';
 import 'package:{{packageName}}/features/features.dart';
-
-abstract class AppRoutes {
-  static const splash = '/splash';
-  static const home = '/home';
-  static const search = '/search';
-  static const settings = '/settings';
-}
 
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
-  routes: [
+{{routerObservers}}  routes: [
     GoRoute(
       path: AppRoutes.splash,
       builder: (context, state) => const SplashView(),
     ),
-    StatefulShellRoute.indexedStack(
+{{authRouteBlock}}    StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return SampleShellView(navigationShell: navigationShell);
       },

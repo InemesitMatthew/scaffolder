@@ -4,6 +4,7 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
+  rmSync,
   statSync,
   writeFileSync,
   copyFileSync,
@@ -11,6 +12,7 @@ import {
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FlutterScaffoldOptions } from '../types.js';
+import { wantsError } from '../types.js';
 import { renderTemplate, stripTmplExtension, type TemplateVars } from '../../utils/render.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,7 +31,12 @@ export function getFlutterTemplatesRoot(): string {
   );
 }
 
-function buildVars(options: FlutterScaffoldOptions): TemplateVars {
+function exportLine(path: string): string {
+  return `export '${path}';\n`;
+}
+
+export function buildVars(options: FlutterScaffoldOptions): TemplateVars {
+  const error = wantsError(options);
   return {
     packageName: options.packageName,
     appClassName: options.appClassName,
@@ -39,7 +46,105 @@ function buildVars(options: FlutterScaffoldOptions): TemplateVars {
     fontFamily: options.fontFamily,
     baseWidth: options.baseWidth,
     baseHeight: options.baseHeight,
-    shellExport: options.withShell ? "export 'shell/shell.dart';\n" : '',
+    shellExport: options.withShell ? exportLine('shell/shell.dart') : '',
+    authExport: options.withAuth ? exportLine('auth/auth.dart') : '',
+    errorExport: error ? exportLine('error/error.dart') : '',
+    networkExport: options.withNetwork ? exportLine('network/network.dart') : '',
+    loggingExport: options.withLogging ? exportLine('logging/logging.dart') : '',
+    configExport: options.withEnv ? exportLine('config/config.dart') : '',
+    dioExport: options.withNetwork ? "export 'package:dio/dio.dart';\n" : '',
+    talkerExport: options.withLogging
+      ? "export 'package:talker_flutter/talker_flutter.dart';\n"
+      : '',
+    secureStorageExport: options.withAuth
+      ? "export 'package:flutter_secure_storage/flutter_secure_storage.dart';\n"
+      : '',
+    flutterLocalizationsExport: options.withL10n
+      ? "export 'package:flutter_localizations/flutter_localizations.dart';\n"
+      : '',
+    l10nCoreExport: options.withL10n
+      ? `export 'package:${options.packageName}/l10n/app_localizations.dart';\n`
+      : '',
+    locatorNetworkRegister: options.withNetwork
+      ? [
+          '  if (!locator.isRegistered<ApiClient>()) {',
+          '    locator.registerLazySingleton<ApiClient>(() => ApiClient());',
+          '  }',
+          '',
+        ].join('\n')
+      : '',
+    locatorLoggingRegister: options.withLogging
+      ? [
+          '  if (!locator.isRegistered<Talker>()) {',
+          '    locator.registerLazySingleton<Talker>(() => appTalker);',
+          '  }',
+          '  if (!locator.isRegistered<AppLogger>()) {',
+          '    locator.registerLazySingleton<AppLogger>(() => AppLogger(appTalker));',
+          '  }',
+          '',
+        ].join('\n')
+      : '',
+    locatorAuthRegister: options.withAuth
+      ? [
+          '  if (!locator.isRegistered<FlutterSecureStorage>()) {',
+          '    locator.registerLazySingleton<FlutterSecureStorage>(',
+          '      () => const FlutterSecureStorage(),',
+          '    );',
+          '  }',
+          '',
+        ].join('\n')
+      : '',
+    locatorSampleRegister: '',
+    locatorExtraImports: [
+      options.withNetwork ? "import '../network/api_client.dart';" : '',
+      options.withLogging ? "import '../logging/app_logger.dart';" : '',
+      options.withLogging
+        ? "import 'package:talker_flutter/talker_flutter.dart';"
+        : '',
+      options.withAuth
+        ? "import 'package:flutter_secure_storage/flutter_secure_storage.dart';"
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    routerObservers: options.withLogging
+      ? '  observers: [TalkerRouteObserver(appTalker)],\n'
+      : '',
+    routerLoggingImports: options.withLogging
+      ? "import '../logging/app_logger.dart';\nimport 'package:talker_flutter/talker_flutter.dart';\n"
+      : '',
+    authRouteBlock: options.withAuth
+      ? [
+          '    GoRoute(',
+          '      path: AppRoutes.auth,',
+          '      builder: (context, state) => const AuthPlaceholderView(),',
+          '    ),',
+          '',
+        ].join('\n')
+      : '',
+    authRouteConst: options.withAuth
+      ? "  static const auth = '/auth';\n"
+      : '',
+    authViewImport: '',
+    l10nDelegates: options.withL10n
+      ? [
+          '      localizationsDelegates: const [',
+          '        AppLocalizations.delegate,',
+          '        GlobalMaterialLocalizations.delegate,',
+          '        GlobalWidgetsLocalizations.delegate,',
+          '        GlobalCupertinoLocalizations.delegate,',
+          '      ],',
+          '      supportedLocales: AppLocalizations.supportedLocales,',
+          '',
+        ].join('\n')
+      : '',
+    l10nImports: '',
+    apiBaseUrlExpr: options.withEnv
+      ? 'AppConfig.apiBaseUrl'
+      : "'https://api.example.com'",
+    networkConfigImport: options.withEnv
+      ? "import '../config/app_config.dart';\n"
+      : '',
   };
 }
 
@@ -70,6 +175,31 @@ function walkFiles(dir: string): string[] {
     }
   }
   return out;
+}
+
+function copyOptionalLibPack(
+  projectPath: string,
+  templatesRoot: string,
+  packName: string,
+  vars: TemplateVars,
+  written: string[],
+): void {
+  const packRoot = join(templatesRoot, 'optional', packName, 'lib');
+  if (!existsSync(packRoot)) {
+    throw new Error(`Optional ${packName} templates missing: ${packRoot}`);
+  }
+  for (const file of walkFiles(packRoot)) {
+    const rel = relative(packRoot, file);
+    const outRel = stripTmplExtension(rel);
+    const dest = join(projectPath, 'lib', outRel);
+    writeRenderedFile(
+      dest,
+      readFileSync(file, 'utf8'),
+      vars,
+      `optional/${packName}/${rel}`,
+    );
+    written.push(outRel);
+  }
 }
 
 export function assertInjectTarget(projectPath: string): void {
@@ -106,6 +236,21 @@ export function assertNoOverwrite(
   }
 }
 
+/** Remove leftover sample shell when re-injecting without shell. */
+export function cleanupLeftoverShell(
+  projectPath: string,
+  options: FlutterScaffoldOptions,
+): string | undefined {
+  if (options.withShell) return undefined;
+  const shellDir = join(projectPath, 'lib', 'features', 'shell');
+  if (!existsSync(shellDir)) return undefined;
+  if (!options.force) {
+    return `Left existing lib/features/shell (pass --force to remove when shell is off).`;
+  }
+  rmSync(shellDir, { recursive: true, force: true });
+  return 'Removed leftover lib/features/shell';
+}
+
 export function copyRenderedLibTemplates(
   projectPath: string,
   options: FlutterScaffoldOptions,
@@ -126,21 +271,100 @@ export function copyRenderedLibTemplates(
     written.push(outRel);
   }
 
+  if (wantsError(options)) {
+    copyOptionalLibPack(projectPath, templatesRoot, 'error', vars, written);
+  }
+  if (options.withNetwork) {
+    copyOptionalLibPack(projectPath, templatesRoot, 'network', vars, written);
+  }
+  if (options.withEnv) {
+    copyOptionalLibPack(projectPath, templatesRoot, 'env', vars, written);
+  }
+  if (options.withLogging) {
+    copyOptionalLibPack(projectPath, templatesRoot, 'logging', vars, written);
+  }
+  if (options.withSampleFeature) {
+    copyOptionalLibPack(
+      projectPath,
+      templatesRoot,
+      'sample-feature',
+      vars,
+      written,
+    );
+  }
+  if (options.withAuth) {
+    copyOptionalLibPack(projectPath, templatesRoot, 'auth', vars, written);
+  }
+  if (options.withL10n) {
+    copyOptionalLibPack(projectPath, templatesRoot, 'l10n', vars, written);
+    const l10nRoot = join(templatesRoot, 'optional', 'l10n', 'root');
+    if (existsSync(l10nRoot)) {
+      for (const file of walkFiles(l10nRoot)) {
+        const rel = relative(l10nRoot, file);
+        const outRel = stripTmplExtension(rel);
+        const dest = join(projectPath, outRel);
+        writeRenderedFile(
+          dest,
+          readFileSync(file, 'utf8'),
+          vars,
+          `optional/l10n/root/${rel}`,
+        );
+        written.push(outRel);
+      }
+    }
+  }
   if (options.withShell) {
-    const shellRoot = join(templatesRoot, 'optional', 'shell', 'lib');
-    if (!existsSync(shellRoot)) {
-      throw new Error(`Optional shell templates missing: ${shellRoot}`);
-    }
-    for (const file of walkFiles(shellRoot)) {
-      const rel = relative(shellRoot, file);
-      const outRel = stripTmplExtension(rel);
-      const dest = join(projectPath, 'lib', outRel);
-      writeRenderedFile(dest, readFileSync(file, 'utf8'), vars, `optional/shell/${rel}`);
-      written.push(outRel);
-    }
+    copyOptionalLibPack(projectPath, templatesRoot, 'shell', vars, written);
   }
 
   return written;
+}
+
+export function writeCiWorkflow(
+  projectPath: string,
+  options: FlutterScaffoldOptions,
+): boolean {
+  if (!options.withCi) return false;
+  const templatesRoot = getFlutterTemplatesRoot();
+  const tmpl = join(
+    templatesRoot,
+    'optional',
+    'ci',
+    'flutter_ci.yml.tmpl',
+  );
+  if (!existsSync(tmpl)) {
+    throw new Error(`Missing CI template: ${tmpl}`);
+  }
+  const dest = join(projectPath, '.github', 'workflows', 'flutter_ci.yml');
+  writeRenderedFile(
+    dest,
+    readFileSync(tmpl, 'utf8'),
+    buildVars(options),
+    'optional/ci/flutter_ci.yml.tmpl',
+  );
+  return true;
+}
+
+export function writeAnalysisOptions(projectPath: string): {
+  written: boolean;
+  backedUp: boolean;
+} {
+  const templatesRoot = getFlutterTemplatesRoot();
+  const tmpl = join(templatesRoot, 'partials', 'analysis_options.yaml.tmpl');
+  if (!existsSync(tmpl)) {
+    throw new Error(`Missing analysis_options template: ${tmpl}`);
+  }
+  const dest = join(projectPath, 'analysis_options.yaml');
+  let backedUp = false;
+  if (existsSync(dest)) {
+    const bak = `${dest}.scaffolder.bak`;
+    if (!existsSync(bak)) {
+      copyFileSync(dest, bak);
+      backedUp = true;
+    }
+  }
+  writeFileSync(dest, readFileSync(tmpl, 'utf8'), 'utf8');
+  return { written: true, backedUp };
 }
 
 export function ensureAssetFolders(projectPath: string): void {
@@ -154,10 +378,6 @@ export function ensureAssetFolders(projectPath: string): void {
   }
 }
 
-/**
- * Writes main.dart. Backs up an existing file on inject unless --force
- * already implies intentional overwrite (still backs up once).
- */
 export function writeMainDart(
   projectPath: string,
   options: FlutterScaffoldOptions,
@@ -243,6 +463,27 @@ export function patchPubspec(
     { id: 'go_router:', line: '  go_router: ^14.8.1' },
     { id: 'get_it:', line: '  get_it: ^8.0.3' },
   ];
+  if (options.withNetwork) {
+    foundationDeps.push({ id: 'dio:', line: '  dio: ^5.8.0+1' });
+  }
+  if (options.withAuth) {
+    foundationDeps.push({
+      id: 'flutter_secure_storage:',
+      line: '  flutter_secure_storage: ^9.2.4',
+    });
+  }
+  if (options.withLogging) {
+    foundationDeps.push({
+      id: 'talker_flutter:',
+      line: '  talker_flutter: ^4.6.14',
+    });
+  }
+  if (options.withL10n) {
+    foundationDeps.push({
+      id: 'flutter_localizations:',
+      line: '  flutter_localizations:\n    sdk: flutter',
+    });
+  }
 
   let insertAt = deps.end;
   for (let i = deps.start + 1; i < deps.end; i++) {
@@ -256,10 +497,13 @@ export function patchPubspec(
     (d) => !sectionHasLine(lines, deps.start, deps.end, d.id),
   );
   if (missingDeps.length > 0) {
-    lines.splice(insertAt, 0, ...missingDeps.map((d) => d.line));
+    const toInsert: string[] = [];
+    for (const d of missingDeps) {
+      toInsert.push(...d.line.split('\n'));
+    }
+    lines.splice(insertAt, 0, ...toInsert);
   }
 
-  // Recompute flutter section after dependency inserts shifted indexes.
   let flutter = findTopLevelSection(lines, 'flutter');
   if (!flutter) {
     lines.push('', 'flutter:', '  uses-material-design: true');
@@ -273,14 +517,31 @@ export function patchPubspec(
       '    - assets/svgs/',
       '    - assets/animations/',
     ];
-    let insertAt = flutter.end;
+    let assetInsertAt = flutter.end;
     for (let i = flutter.start + 1; i < flutter.end; i++) {
       if (/uses-material-design:/.test(lines[i]!)) {
-        insertAt = i + 1;
+        assetInsertAt = i + 1;
         break;
       }
     }
-    lines.splice(insertAt, 0, ...assetBlock);
+    lines.splice(assetInsertAt, 0, ...assetBlock);
+  }
+
+  if (options.withL10n) {
+    flutter = findTopLevelSection(lines, 'flutter');
+    if (
+      flutter &&
+      !sectionHasLine(lines, flutter.start, flutter.end, 'generate:')
+    ) {
+      let genAt = flutter.start + 1;
+      for (let i = flutter.start + 1; i < flutter.end; i++) {
+        if (/uses-material-design:/.test(lines[i]!)) {
+          genAt = i + 1;
+          break;
+        }
+      }
+      lines.splice(genAt, 0, '  generate: true');
+    }
   }
 
   let content = lines.join('\n');
@@ -288,8 +549,12 @@ export function patchPubspec(
     if (!content.endsWith('\n')) content += '\n';
     content += `\n# scaffolder: fonts\n# Add ${options.fontFamily} under flutter/fonts when you drop font files into the project.\n`;
   }
+  if (options.withEnv && !content.includes('# scaffolder: dart-define')) {
+    if (!content.endsWith('\n')) content += '\n';
+    content +=
+      '\n# scaffolder: dart-define\n# flutter run --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=https://api.example.com\n';
+  }
 
-  // Backup before write
   const bak = `${pubspecPath}.scaffolder.bak`;
   if (!existsSync(bak)) {
     writeFileSync(bak, original, 'utf8');
@@ -320,7 +585,6 @@ export function copyPackageAssetPlaceholders(projectPath: string): void {
 export function markFailedCreate(projectPath: string): string {
   const failed = `${projectPath}.scaffolder-failed`;
   if (existsSync(failed)) {
-    // unique suffix
     const stamped = `${failed}-${Date.now()}`;
     renameSync(projectPath, stamped);
     return stamped;

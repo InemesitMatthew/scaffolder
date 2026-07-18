@@ -1,0 +1,13 @@
+class BootstrapStatus {
+  const BootstrapStatus({
+    required this.message,
+    required this.isReady,
+  });
+
+  final String message;
+  final bool isReady;
+}
+
+abstract class SplashRepository {
+  Future<BootstrapStatus> loadBootstrap();
+}

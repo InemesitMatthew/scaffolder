@@ -1,0 +1,10 @@
+import 'package:{{packageName}}/core/core.dart';
+import 'package:{{packageName}}/features/features.dart';
+
+final splashRepositoryProvider = Provider<SplashRepository>(
+  (ref) => SplashRepositoryImpl(),
+);
+
+final bootstrapStatusProvider = FutureProvider<BootstrapStatus>((ref) {
+  return ref.watch(splashRepositoryProvider).loadBootstrap();
+});

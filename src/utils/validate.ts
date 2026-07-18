@@ -79,6 +79,30 @@ export function assertCreateParentExists(outputPath: string): void {
   }
 }
 
+/** Fail early when create target folder already exists. */
+export function assertCreateTargetAvailable(outputPath: string): void {
+  const projectDir = resolve(outputPath);
+  if (existsSync(projectDir)) {
+    throw new Error(
+      `Target already exists: ${projectDir}. Use inject mode or pick another path.`,
+    );
+  }
+}
+
+/**
+ * Resolve opt-in CLI bool from argv.
+ * `--with-x` → true, `--no-x` → false, neither → undefined (prompt / default off).
+ */
+export function resolveOptionalBool(
+  argv: string[],
+  withFlag: string,
+  noFlag?: string,
+): boolean | undefined {
+  if (noFlag && argv.includes(noFlag)) return false;
+  if (argv.includes(withFlag)) return true;
+  return undefined;
+}
+
 export function assertWritablePathHint(path: string): void {
   if (path.includes('\0')) {
     throw new Error('Path contains invalid characters.');
@@ -123,17 +147,24 @@ export function assertInjectProjectPath(raw: string): string {
   return projectPath;
 }
 
-/** Read top-level `name:` from pubspec.yaml. */
+/** Read top-level `name:` from pubspec.yaml (BOM + quoted names OK). */
 export function readPubspecPackageName(projectPath: string): string {
   const pubspecPath = join(projectPath, 'pubspec.yaml');
   if (!existsSync(pubspecPath)) {
     throw new Error(`pubspec.yaml not found at ${pubspecPath}`);
   }
-  const content = readFileSync(pubspecPath, 'utf8');
-  const match = content.match(/^name:\s*([a-zA-Z_][\w]*)\s*$/m);
+  const raw = readFileSync(pubspecPath, 'utf8');
+  const content = raw.replace(/^\uFEFF/, '');
+  const match = content.match(/^name:\s*["']?([a-zA-Z_][\w]*)["']?\s*$/m);
   if (!match?.[1]) {
+    const preview = content
+      .split(/\r?\n/)
+      .slice(0, 5)
+      .join('\n')
+      .trim();
     throw new Error(
-      `Could not read package name from ${pubspecPath}. Add a top-level name: field.`,
+      `Could not read package name from ${pubspecPath}. Add a top-level name: field.` +
+        (preview ? `\nFirst lines:\n${preview}` : ''),
     );
   }
   return assertPackageName(match[1]);

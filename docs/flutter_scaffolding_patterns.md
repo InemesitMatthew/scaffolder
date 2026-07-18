@@ -14,7 +14,7 @@ Bootstrap a design-system-ready foundation so every feature starts with:
 | `features/shared/` | Universal UI kit: widgets, palette, assets, weights |
 | `features/<feature>/` | Feature modules with Clean Architecture + barrel exports |
 
-**Import rule:** almost every UI file starts with:
+**Import rule (outside `lib/core/`):**
 
 ```dart
 import 'package:<app>/core/core.dart';
@@ -23,17 +23,24 @@ import 'package:<app>/features/features.dart';
 
 That works because barrels re-export Material, Riverpod, shared widgets, etc.
 
+**Inside `lib/core/`:** never import `core/core.dart`. Use packages + relative siblings so leaves stay acyclic. Full rationale: [import_habit.md](import_habit.md). Short flags/habit: [extras_guide.md](extras_guide.md).
+
 ---
 
 ## 2. Folder skeleton
 
 ```text
 lib/
-├── app/                          # MaterialApp.router + ThemeData
+├── app/                          # MaterialApp.router + buildAppTheme()
 ├── core/
 │   ├── core.dart                 # ROOT barrel (infra + common pkgs)
+│   ├── theme/                    # Always — ThemeData from Palette
 │   ├── locator/                  # GetIt setupLocator (services only — not navigation)
-│   ├── router/                   # GoRouter + AppRoutes
+│   ├── router/                   # GoRouter + AppRoutes (concrete view imports)
+│   ├── error/                    # Optional (--with-network / --with-sample-feature)
+│   ├── network/                  # Optional (--with-network) Dio ApiClient
+│   ├── logging/                  # Optional (--with-logging) talker_flutter
+│   ├── config/                   # Optional (--with-env) AppConfig / dart-define
 │   └── utils/
 │       ├── utils.dart
 │       ├── sizing_utils.dart     # SizeConfig + context.verticalSpace
@@ -57,6 +64,7 @@ lib/
     ├── splash/
     ├── home/                     # Post-splash placeholder (always)
     ├── shell/                    # Optional sample StatefulShellRoute (--with-shell)
+    ├── auth/                     # Optional (--with-auth)
     └── <feature>/
         ├── <feature>.dart
         ├── data/
@@ -72,12 +80,15 @@ lib/
 
 ## 2.1 Routing (`go_router`)
 
-- Single source of truth: `core/router/app_router.dart`
-- App uses `MaterialApp.router(routerConfig: appRouter)`
+- Route **names** (`AppRoutes`): exported via `core/core.dart`
+- Router **config** (`appRouter`): `core/router/app_router.dart` — **not** in the core barrel (breaks load-order cycles)
+- App: `import core/core.dart` + `import core/router/app_router.dart`, then `MaterialApp.router(routerConfig: appRouter)`
 - UI navigates with `context.go` / `context.push` / `context.pop`
 - **Do not** register a NavigationService in GetIt
 - **Default:** splash → flat `/home` placeholder
 - **Optional (`--with-shell`):** splash → sample `StatefulShellRoute` (Home / Search / Settings)
+
+Import habit: [extras_guide.md](extras_guide.md).
 
 ## 2.2 DI (`get_it`)
 
@@ -90,6 +101,22 @@ Future<void> setupLocator() async {
 ```
 
 Call `await setupLocator()` from `main()` before `runApp`.
+
+## 2.3 Optional extras
+
+Interactive multiselect (or `--with-*` / `--no-*` flags). Default **off**.
+
+| Extra | Flag | Ships |
+|-------|------|--------|
+| Shell | `--with-shell` | Sample `StatefulShellRoute` |
+| Network | `--with-network` | Dio `ApiClient` + `core/error` |
+| Sample CA | `--with-sample-feature` | Splash repo + Riverpod (+ error) |
+| Auth | `--with-auth` | Auth placeholder + secure storage in GetIt |
+| L10n | `--with-l10n` | `l10n.yaml` + en arb + delegates |
+| Logging | `--with-logging` | `talker_flutter` + `TalkerRouteObserver` |
+| Env | `--with-env` | `AppConfig` via `--dart-define` |
+| CI | `--with-ci` | `.github/workflows/flutter_ci.yml` |
+
 ---
 
 ## 3. Barrel export pattern
@@ -100,7 +127,7 @@ Call `await setupLocator()` from `main()` before `runApp`.
 2. Barrels only `export` — no logic.
 3. Nested barrels bubble up: file → folder barrel → feature barrel → `features.dart`.
 4. Prefer relative exports inside a package folder.
-5. Keep the **mega** `features/features.dart` and `core/core.dart` so the two-import habit stays consistent.
+5. Keep the **mega** `features/features.dart` and `core/core.dart` for app/feature code; core leaves stay out of `core.dart`.
 
 **Leaf barrel** (`features/shared/widgets/widgets.dart`):
 
@@ -326,6 +353,7 @@ features/wallet/
 - [ ] `core/core.dart` + `features/features.dart` compile
 - [ ] `MaterialApp.router` + `GoRouter` (splash → home or sample shell)
 - [ ] `setupLocator()` called from `main` (empty / services only)
+- [ ] `buildAppTheme()` + `analysis_options.yaml` present
 - [ ] `BaseScaffold` dismisses keyboard + SafeArea + padding
 - [ ] `TextWidget` uses `context.sp` + `SizeConfig.fontFamily`
 - [ ] `TextFieldWidget` supports title, validator, password
@@ -333,4 +361,4 @@ features/wallet/
 - [ ] `Palette` semantic tokens + ThemeData wiring
 - [ ] Spacing uses raw numbers (`context.verticalSpace(16)`), not a `Sizes` class
 - [ ] Sample feature with barrels
-- [ ] Optional `--with-shell` does not ship unless requested
+- [ ] Optional extras only ship when requested (`--with-*` / multiselect)

@@ -13,12 +13,31 @@ export interface FlutterScaffoldOptions {
   baseWidth: number;
   baseHeight: number;
   force: boolean;
-  /** Optional sample StatefulShellRoute (default false). */
+  /** Sample StatefulShellRoute. */
   withShell: boolean;
+  /** Dio ApiClient + pulls core/error. */
+  withNetwork: boolean;
+  /** Splash CA sample (repo + Riverpod); may pull core/error. */
+  withSampleFeature: boolean;
+  /** Auth feature stub + secure storage hook. */
+  withAuth: boolean;
+  /** flutter_localizations + arb stub. */
+  withL10n: boolean;
+  /** talker_flutter AppLogger + route observer. */
+  withLogging: boolean;
+  /** AppConfig via --dart-define. */
+  withEnv: boolean;
+  /** GitHub Actions analyze + test workflow. */
+  withCi: boolean;
   /** After success: remove *.scaffolder.bak (undefined = ask interactively). */
   cleanBackups?: boolean;
   appClassName: string;
   appTitle: string;
+}
+
+/** Derived: error types when network and/or sample feature is on. */
+export function wantsError(options: FlutterScaffoldOptions): boolean {
+  return options.withNetwork || options.withSampleFeature;
 }
 
 export interface GeneratorResult {

@@ -2,7 +2,9 @@ import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { collectOptions, type CliFlags } from './prompts/index.js';
 import { runFlutterGenerator } from './generators/flutter/index.js';
 import { getFramework } from './registry/frameworks.js';
@@ -11,6 +13,28 @@ import {
   listScaffolderBackups,
   restoreScaffolderBackups,
 } from './utils/backups.js';
+import { resolveOptionalBool } from './utils/validate.js';
+
+function readPackageVersion(): string {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      join(here, '../package.json'),
+      join(here, '../../package.json'),
+    ];
+    for (const pkgPath of candidates) {
+      if (existsSync(pkgPath)) {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
+          version?: string;
+        };
+        if (pkg.version) return pkg.version;
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return '0.1.1';
+}
 
 async function maybeCleanBackups(
   projectPath: string,
@@ -43,11 +67,12 @@ async function maybeCleanBackups(
 
 async function main(): Promise<void> {
   const program = new Command();
+  const argv = process.argv;
 
   program
     .name('scaffolder')
     .description('Scaffold scalable codebases — Flutter first, more frameworks later')
-    .version('0.1.0');
+    .version(readPackageVersion());
 
   program
     .command('restore')
@@ -98,7 +123,6 @@ async function main(): Promise<void> {
       p.outro(pc.green(`Removed ${removed.length} backup(s).`));
     });
 
-  // Default: scaffold (no subcommand required)
   program
     .option('-f, --framework <id>', 'framework id (flutter)')
     .option('-m, --mode <mode>', 'create | inject')
@@ -109,8 +133,22 @@ async function main(): Promise<void> {
     .option('--font <name>', 'font family')
     .option('--base-width <n>', 'design base width')
     .option('--base-height <n>', 'design base height')
-    .option('--with-shell', 'include optional sample StatefulShellRoute', false)
-    .option('--no-shell', 'skip sample tab shell (default)')
+    .option('--with-shell', 'include sample StatefulShellRoute')
+    .option('--no-shell', 'skip sample tab shell')
+    .option('--with-network', 'include Dio ApiClient + Failure/Result')
+    .option('--no-network', 'skip network stack')
+    .option('--with-sample-feature', 'include splash CA sample + Riverpod')
+    .option('--no-sample-feature', 'skip sample CA feature')
+    .option('--with-auth', 'include auth stub + secure storage')
+    .option('--no-auth', 'skip auth stub')
+    .option('--with-l10n', 'include localization (en)')
+    .option('--no-l10n', 'skip localization')
+    .option('--with-logging', 'include talker_flutter logging')
+    .option('--no-logging', 'skip logging')
+    .option('--with-env', 'include AppConfig (--dart-define)')
+    .option('--no-env', 'skip env/config')
+    .option('--with-ci', 'include GitHub Actions flutter CI')
+    .option('--no-ci', 'skip CI workflow')
     .option('--force', 'overwrite existing core/shared', false)
     .option('--clean-backups', 'delete *.scaffolder.bak after success')
     .option('--keep-backups', 'keep *.scaffolder.bak after success (skip prompt)')
@@ -119,10 +157,6 @@ async function main(): Promise<void> {
         let cleanBackups: boolean | undefined;
         if (opts.cleanBackups) cleanBackups = true;
         else if (opts.keepBackups) cleanBackups = false;
-
-        let withShell: boolean | undefined;
-        if (opts.withShell === true) withShell = true;
-        if (opts.noShell === true) withShell = false;
 
         const flags: CliFlags = {
           framework: opts.framework,
@@ -135,7 +169,18 @@ async function main(): Promise<void> {
           baseWidth: opts.baseWidth,
           baseHeight: opts.baseHeight,
           force: opts.force,
-          withShell,
+          withShell: resolveOptionalBool(argv, '--with-shell', '--no-shell'),
+          withNetwork: resolveOptionalBool(argv, '--with-network', '--no-network'),
+          withSampleFeature: resolveOptionalBool(
+            argv,
+            '--with-sample-feature',
+            '--no-sample-feature',
+          ),
+          withAuth: resolveOptionalBool(argv, '--with-auth', '--no-auth'),
+          withL10n: resolveOptionalBool(argv, '--with-l10n', '--no-l10n'),
+          withLogging: resolveOptionalBool(argv, '--with-logging', '--no-logging'),
+          withEnv: resolveOptionalBool(argv, '--with-env', '--no-env'),
+          withCi: resolveOptionalBool(argv, '--with-ci', '--no-ci'),
           cleanBackups,
         };
 
