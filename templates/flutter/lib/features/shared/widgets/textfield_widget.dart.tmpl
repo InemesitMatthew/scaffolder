@@ -82,7 +82,7 @@ class _TextFieldWidgetState extends State<TextFieldWidget> {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: obscureText,
-      builder: (__, value, _) {
+      builder: (context, value, child) {
         return GestureDetector(
           onTap: widget.onTap,
           child: Column(

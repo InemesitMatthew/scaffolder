@@ -50,6 +50,11 @@ export async function runFlutterGenerator(
     messages.push(
       pc.green(`Injected ${written.length} template files under lib/`),
     );
+    if (options.withShell) {
+      messages.push(pc.dim('Included optional sample StatefulShellRoute'));
+    } else {
+      messages.push(pc.dim('Flat post-splash Home placeholder (no sample shell)'));
+    }
 
     const { backedUp } = writeMainDart(projectPath, options);
     messages.push(

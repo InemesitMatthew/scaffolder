@@ -109,6 +109,8 @@ async function main(): Promise<void> {
     .option('--font <name>', 'font family')
     .option('--base-width <n>', 'design base width')
     .option('--base-height <n>', 'design base height')
+    .option('--with-shell', 'include optional sample StatefulShellRoute', false)
+    .option('--no-shell', 'skip sample tab shell (default)')
     .option('--force', 'overwrite existing core/shared', false)
     .option('--clean-backups', 'delete *.scaffolder.bak after success')
     .option('--keep-backups', 'keep *.scaffolder.bak after success (skip prompt)')
@@ -117,6 +119,10 @@ async function main(): Promise<void> {
         let cleanBackups: boolean | undefined;
         if (opts.cleanBackups) cleanBackups = true;
         else if (opts.keepBackups) cleanBackups = false;
+
+        let withShell: boolean | undefined;
+        if (opts.withShell === true) withShell = true;
+        if (opts.noShell === true) withShell = false;
 
         const flags: CliFlags = {
           framework: opts.framework,
@@ -129,6 +135,7 @@ async function main(): Promise<void> {
           baseWidth: opts.baseWidth,
           baseHeight: opts.baseHeight,
           force: opts.force,
+          withShell,
           cleanBackups,
         };
 

@@ -1,6 +1,6 @@
 {
   "name": "@senmid/scaffolder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Interactive CLI to scaffold scalable codebases. Flutter first, more frameworks later.",
   "type": "module",
   "bin": {

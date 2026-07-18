@@ -1,0 +1,56 @@
+import 'package:go_router/go_router.dart';
+import 'package:{{packageName}}/features/features.dart';
+
+abstract class AppRoutes {
+  static const splash = '/splash';
+  static const home = '/home';
+  static const search = '/search';
+  static const settings = '/settings';
+}
+
+final GoRouter appRouter = GoRouter(
+  initialLocation: AppRoutes.splash,
+  routes: [
+    GoRoute(
+      path: AppRoutes.splash,
+      builder: (context, state) => const SplashView(),
+    ),
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return SampleShellView(navigationShell: navigationShell);
+      },
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.home,
+              builder: (context, state) => const HomeView(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.search,
+              builder: (context, state) => const SampleTabView(
+                title: 'Search',
+                message: 'Sample search tab — replace me.',
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: AppRoutes.settings,
+              builder: (context, state) => const SampleTabView(
+                title: 'Settings',
+                message: 'Sample settings tab — replace me.',
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ],
+);

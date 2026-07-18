@@ -39,7 +39,24 @@ function buildVars(options: FlutterScaffoldOptions): TemplateVars {
     fontFamily: options.fontFamily,
     baseWidth: options.baseWidth,
     baseHeight: options.baseHeight,
+    shellExport: options.withShell ? "export 'shell/shell.dart';\n" : '',
   };
+}
+
+function writeRenderedFile(
+  dest: string,
+  raw: string,
+  vars: TemplateVars,
+  relForError: string,
+): void {
+  const rendered = renderTemplate(raw, vars);
+  if (rendered.includes('{{')) {
+    throw new Error(
+      `Unresolved template placeholders in ${relForError}. Check scaffolder template vars.`,
+    );
+  }
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, rendered, 'utf8');
 }
 
 function walkFiles(dir: string): string[] {
@@ -105,16 +122,22 @@ export function copyRenderedLibTemplates(
     const rel = relative(libTemplates, file);
     const outRel = stripTmplExtension(rel);
     const dest = join(projectPath, 'lib', outRel);
-    const raw = readFileSync(file, 'utf8');
-    const rendered = renderTemplate(raw, vars);
-    if (rendered.includes('{{')) {
-      throw new Error(
-        `Unresolved template placeholders in ${rel}. Check scaffolder template vars.`,
-      );
-    }
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, rendered, 'utf8');
+    writeRenderedFile(dest, readFileSync(file, 'utf8'), vars, rel);
     written.push(outRel);
+  }
+
+  if (options.withShell) {
+    const shellRoot = join(templatesRoot, 'optional', 'shell', 'lib');
+    if (!existsSync(shellRoot)) {
+      throw new Error(`Optional shell templates missing: ${shellRoot}`);
+    }
+    for (const file of walkFiles(shellRoot)) {
+      const rel = relative(shellRoot, file);
+      const outRel = stripTmplExtension(rel);
+      const dest = join(projectPath, 'lib', outRel);
+      writeRenderedFile(dest, readFileSync(file, 'utf8'), vars, `optional/shell/${rel}`);
+      written.push(outRel);
+    }
   }
 
   return written;
@@ -214,28 +237,26 @@ export function patchPubspec(
     );
   }
 
-  if (!sectionHasLine(lines, deps.start, deps.end, 'flutter_riverpod:')) {
-    // Insert after `sdk: flutter` inside dependencies if present, else end of section.
-    let insertAt = deps.end;
-    for (let i = deps.start + 1; i < deps.end; i++) {
-      if (/^\s+sdk:\s*flutter\s*$/.test(lines[i]!)) {
-        insertAt = i + 1;
-        break;
-      }
+  const foundationDeps = [
+    { id: 'flutter_riverpod:', line: '  flutter_riverpod: ^2.6.1' },
+    { id: 'flutter_svg:', line: '  flutter_svg: ^2.0.17' },
+    { id: 'go_router:', line: '  go_router: ^14.8.1' },
+    { id: 'get_it:', line: '  get_it: ^8.0.3' },
+  ];
+
+  let insertAt = deps.end;
+  for (let i = deps.start + 1; i < deps.end; i++) {
+    if (/^\s+sdk:\s*flutter\s*$/.test(lines[i]!)) {
+      insertAt = i + 1;
+      break;
     }
-    lines.splice(
-      insertAt,
-      0,
-      '  flutter_riverpod: ^2.6.1',
-      '  flutter_svg: ^2.0.17',
-    );
-  } else if (!sectionHasLine(lines, deps.start, deps.end, 'flutter_svg:')) {
-    for (let i = deps.start; i < lines.length; i++) {
-      if (lines[i]!.includes('flutter_riverpod:')) {
-        lines.splice(i + 1, 0, '  flutter_svg: ^2.0.17');
-        break;
-      }
-    }
+  }
+
+  const missingDeps = foundationDeps.filter(
+    (d) => !sectionHasLine(lines, deps.start, deps.end, d.id),
+  );
+  if (missingDeps.length > 0) {
+    lines.splice(insertAt, 0, ...missingDeps.map((d) => d.line));
   }
 
   // Recompute flutter section after dependency inserts shifted indexes.

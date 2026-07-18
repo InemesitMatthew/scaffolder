@@ -1,0 +1,40 @@
+import 'package:go_router/go_router.dart';
+import 'package:{{packageName}}/core/core.dart';
+import 'package:{{packageName}}/features/features.dart';
+
+class SampleShellView extends StatelessWidget {
+  const SampleShellView({super.key, required this.navigationShell});
+
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Palette.bg,
+      body: navigationShell,
+      bottomNavigationBar: NavigationBar(
+        backgroundColor: Palette.surface,
+        indicatorColor: Palette.primary.withValues(alpha: 0.2),
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: navigationShell.goBranch,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.search_outlined),
+            selectedIcon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+      ),
+    );
+  }
+}

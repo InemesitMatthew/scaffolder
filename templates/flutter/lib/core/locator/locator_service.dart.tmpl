@@ -1,0 +1,11 @@
+import 'package:get_it/get_it.dart';
+
+final locator = GetIt.instance;
+
+/// Registers app-wide services. Navigation stays on go_router — do not register routers here.
+Future<void> setupLocator() async {
+  // Register lazy singletons as features need them, e.g.:
+  // if (!locator.isRegistered<SomeService>()) {
+  //   locator.registerLazySingleton<SomeService>(() => SomeService());
+  // }
+}

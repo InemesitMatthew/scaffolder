@@ -31,6 +31,8 @@ export interface CliFlags {
   baseWidth?: string;
   baseHeight?: string;
   force?: boolean;
+  /** true = sample shell, false = flat placeholder, undefined = ask / default false */
+  withShell?: boolean;
   /** true = remove bak after, false = keep, undefined = ask */
   cleanBackups?: boolean;
 }
@@ -123,11 +125,19 @@ async function promptDesignOptions(flags: CliFlags): Promise<{
             }
           },
         }),
-      font: () =>
-        p.text({
+      fontChoice: () =>
+        p.select({
           message: 'Font family',
-          initialValue: flags.font ?? DESIGN_DEFAULTS.font,
-          validate: (v) => (!v?.trim() ? 'Font family is required' : undefined),
+          initialValue: 'dm_sans',
+          options: [
+            { value: 'dm_sans', label: 'DM Sans', hint: 'Scaffolder default' },
+            {
+              value: 'inter',
+              label: 'Inter',
+              hint: 'SF Pro stand-in for product UIs',
+            },
+            { value: 'custom', label: 'Custom…', hint: 'Type a family name' },
+          ],
         }),
       baseWidth: () =>
         p.text({
@@ -164,12 +174,44 @@ async function promptDesignOptions(flags: CliFlags): Promise<{
     },
   );
 
+  let font = flags.font ?? DESIGN_DEFAULTS.font;
+  const fontChoice = design.fontChoice as string;
+  if (fontChoice === 'dm_sans') font = 'DM Sans';
+  else if (fontChoice === 'inter') font = 'Inter';
+  else {
+    const custom = await p.text({
+      message: 'Custom font family name',
+      initialValue: flags.font ?? DESIGN_DEFAULTS.font,
+      validate: (v) => (!v?.trim() ? 'Font family is required' : undefined),
+    });
+    if (isCancel(custom)) {
+      p.cancel('Cancelled.');
+      process.exit(0);
+    }
+    font = (custom as string).trim();
+  }
+
   return {
     primary: design.primary as string,
-    font: design.font as string,
+    font,
     baseWidth: Number(design.baseWidth),
     baseHeight: Number(design.baseHeight),
   };
+}
+
+async function promptWithShell(flags: CliFlags, interactive: boolean): Promise<boolean> {
+  if (flags.withShell !== undefined) return flags.withShell;
+  if (!interactive) return false;
+
+  const answer = await p.confirm({
+    message: 'Include optional sample tab shell (StatefulShellRoute)?',
+    initialValue: false,
+  });
+  if (isCancel(answer)) {
+    p.cancel('Cancelled.');
+    process.exit(0);
+  }
+  return Boolean(answer);
 }
 
 export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOptions> {
@@ -363,6 +405,14 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
   const resolvedBasePrimary =
     primaryColor === '0xff002f06' ? '0xff004208' : basePrimaryColor;
 
+  const isNonInteractive =
+    Boolean(flags.framework) &&
+    Boolean(flags.mode) &&
+    Boolean(flags.path) &&
+    (mode === 'inject' || Boolean(flags.name));
+
+  const withShell = await promptWithShell(flags, !isNonInteractive);
+
   const options: FlutterScaffoldOptions = {
     framework: 'flutter',
     mode,
@@ -380,16 +430,11 @@ export async function collectOptions(flags: CliFlags): Promise<FlutterScaffoldOp
       DESIGN_DEFAULTS.baseHeight,
     ),
     force: Boolean(flags.force),
+    withShell,
     cleanBackups: flags.cleanBackups,
     appClassName: toAppClassName(packageName),
     appTitle: toAppTitle(packageName),
   };
-
-  const isNonInteractive =
-    Boolean(flags.framework) &&
-    Boolean(flags.mode) &&
-    Boolean(flags.path) &&
-    (mode === 'inject' || Boolean(flags.name));
 
   if (!isNonInteractive) {
     const confirmed = await p.confirm({

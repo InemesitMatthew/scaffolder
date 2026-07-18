@@ -1,0 +1,21 @@
+import 'package:go_router/go_router.dart';
+import 'package:{{packageName}}/features/features.dart';
+
+abstract class AppRoutes {
+  static const splash = '/splash';
+  static const home = '/home';
+}
+
+final GoRouter appRouter = GoRouter(
+  initialLocation: AppRoutes.splash,
+  routes: [
+    GoRoute(
+      path: AppRoutes.splash,
+      builder: (context, state) => const SplashView(),
+    ),
+    GoRoute(
+      path: AppRoutes.home,
+      builder: (context, state) => const HomeView(),
+    ),
+  ],
+);

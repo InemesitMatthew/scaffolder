@@ -13,6 +13,8 @@ export interface FlutterScaffoldOptions {
   baseWidth: number;
   baseHeight: number;
   force: boolean;
+  /** Optional sample StatefulShellRoute (default false). */
+  withShell: boolean;
   /** After success: remove *.scaffolder.bak (undefined = ask interactively). */
   cleanBackups?: boolean;
   appClassName: string;

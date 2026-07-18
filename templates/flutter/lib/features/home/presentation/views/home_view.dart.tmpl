@@ -1,0 +1,31 @@
+import 'package:{{packageName}}/core/core.dart';
+import 'package:{{packageName}}/features/features.dart';
+
+class HomeView extends StatelessWidget {
+  const HomeView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BaseScaffold(
+      useSingleScroll: true,
+      bg: Palette.bg,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          context.verticalSpace(48),
+          TextWidget(
+            'Home',
+            fontSize: 28,
+            fontWeight: Weight.w700,
+            textColor: Palette.textPrimary,
+          ),
+          context.verticalSpace(8),
+          TextWidget(
+            'Replace this placeholder after scaffolding.',
+            textColor: Palette.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}

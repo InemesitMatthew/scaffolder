@@ -1,0 +1,38 @@
+import 'package:{{packageName}}/core/core.dart';
+import 'package:{{packageName}}/features/features.dart';
+
+class SampleTabView extends StatelessWidget {
+  const SampleTabView({
+    super.key,
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return BaseScaffold(
+      useSingleScroll: true,
+      bg: Palette.bg,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          context.verticalSpace(48),
+          TextWidget(
+            title,
+            fontSize: 28,
+            fontWeight: Weight.w700,
+            textColor: Palette.textPrimary,
+          ),
+          context.verticalSpace(8),
+          TextWidget(
+            message,
+            textColor: Palette.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+}

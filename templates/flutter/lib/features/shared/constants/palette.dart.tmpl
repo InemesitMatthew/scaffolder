@@ -3,26 +3,36 @@ import 'package:{{packageName}}/core/core.dart';
 abstract class Palette {
   static const Color primary = Color({{primaryColor}});
   static const Color basePrimary = Color({{basePrimaryColor}});
-  static const Color primary30 = Color(0xffCBF0C1);
-  static const Color primary400 = Color(0xff336839);
+  static const Color accent = Color({{primaryColor}});
+
+  static const Color bg = Color(0xfff5f6f7);
+  static const Color bgSecondary = Color(0xffffffff);
+  static const Color surface = Color(0xffffffff);
+  static const Color surfaceElevated = Color(0xffffffff);
+  static const Color border = Color(0xffe4e7ef);
+
+  static const Color textPrimary = Color(0xff121212);
+  static const Color textMuted = Color(0xff667085);
+
+  /// Legacy aliases — prefer semantic names above.
+  static const Color textHeading = textPrimary;
+  static const Color textSubHeading = textMuted;
+  static const Color text100 = Color(0xff2b2b2b);
+  static const Color text200 = textMuted;
+  static const Color text300 = Color(0xffafb4c0);
 
   static const Color white = Color(0xffffffff);
-  static const Color white600 = Color(0xffDFE1E3);
-
+  static const Color white600 = Color(0xffdfe1e3);
   static const Color black = Color(0xff000000);
-  static const Color black200 = Color(0xffA3A3A3);
+  static const Color black200 = Color(0xffa3a3a3);
   static const Color baseBlack = Color(0xff383838);
 
-  static const Color textHeading = Color(0xff121212);
-  static const Color textSubHeading = Color(0xff696565);
-  static const Color text100 = Color(0xff2B2B2B);
-  static const Color text200 = Color(0xff667085);
-  static const Color text300 = Color(0xffAFB4C0);
-
-  static const Color fillColor = Color(0xffF5F6F7);
-  static const Color border = Color(0xffE4E7EF);
+  static const Color fillColor = bg;
   static const Color transparent = Colors.transparent;
 
-  static const Color baseError = Color(0xffE94444);
-  static const Color baseSecondary = Color(0xff58CD37);
+  static const Color danger = Color(0xffe94444);
+  static const Color baseError = danger;
+  static const Color baseSecondary = Color(0xff58cd37);
+  static const Color primary30 = Color(0xffcbf0c1);
+  static const Color primary400 = Color(0xff336839);
 }

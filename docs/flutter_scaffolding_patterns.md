@@ -10,7 +10,7 @@ Bootstrap a design-system-ready foundation so every feature starts with:
 
 | Layer | Responsibility |
 |--------|----------------|
-| `core/` | App-wide infra: sizing, extensions, navigation, DI, API, config |
+| `core/` | App-wide infra: sizing, extensions, **go_router**, GetIt locator, API, config |
 | `features/shared/` | Universal UI kit: widgets, palette, assets, weights |
 | `features/<feature>/` | Feature modules with Clean Architecture + barrel exports |
 
@@ -29,9 +29,11 @@ That works because barrels re-export Material, Riverpod, shared widgets, etc.
 
 ```text
 lib/
-├── app/                          # App shell, theme, root widget (optional)
+├── app/                          # MaterialApp.router + ThemeData
 ├── core/
 │   ├── core.dart                 # ROOT barrel (infra + common pkgs)
+│   ├── locator/                  # GetIt setupLocator (services only — not navigation)
+│   ├── router/                   # GoRouter + AppRoutes
 │   └── utils/
 │       ├── utils.dart
 │       ├── sizing_utils.dart     # SizeConfig + context.verticalSpace
@@ -52,6 +54,9 @@ lib/
     │       ├── textfield_widget.dart
     │       ├── button.dart
     │       └── image_widget.dart
+    ├── splash/
+    ├── home/                     # Post-splash placeholder (always)
+    ├── shell/                    # Optional sample StatefulShellRoute (--with-shell)
     └── <feature>/
         ├── <feature>.dart
         ├── data/
@@ -63,6 +68,28 @@ lib/
             └── providers/
 ```
 
+---
+
+## 2.1 Routing (`go_router`)
+
+- Single source of truth: `core/router/app_router.dart`
+- App uses `MaterialApp.router(routerConfig: appRouter)`
+- UI navigates with `context.go` / `context.push` / `context.pop`
+- **Do not** register a NavigationService in GetIt
+- **Default:** splash → flat `/home` placeholder
+- **Optional (`--with-shell`):** splash → sample `StatefulShellRoute` (Home / Search / Settings)
+
+## 2.2 DI (`get_it`)
+
+```dart
+final locator = GetIt.instance;
+
+Future<void> setupLocator() async {
+  // Register storage / API services here later — never the router
+}
+```
+
+Call `await setupLocator()` from `main()` before `runApp`.
 ---
 
 ## 3. Barrel export pattern
@@ -122,15 +149,17 @@ export 'splash/splash.dart';
 ```dart
 abstract class Palette {
   static const Color primary = Color(0xff002F06);
-  static const Color basePrimary = Color(0xff004208);
-  static const Color white = Color(0xffffffff);
-  static const Color text200 = Color(0xff667085);
-  static const Color fillColor = Color(0xffF5F6F7);
-  static const Color baseError = Color(0xffE94444);
+  static const Color accent = primary;
+  static const Color bg = Color(0xfff5f6f7);
+  static const Color surface = Color(0xffffffff);
+  static const Color border = Color(0xffe4e7ef);
+  static const Color textPrimary = Color(0xff121212);
+  static const Color textMuted = Color(0xff667085);
+  static const Color danger = Color(0xffe94444);
 }
 ```
 
-Use `abstract class` + `static const` (no instantiation). Prefer semantic names (`textPrimary`, `surface`, `border`, `danger`) over endless numbered greys.
+Map into `ThemeData` / `ColorScheme` in `app/app.dart`. Use `abstract class` + `static const` (no instantiation).
 
 ### 4.2 Spacing — raw numbers only
 
@@ -285,22 +314,23 @@ features/wallet/
 
 ## 9. Improvements (keep the barrel rule)
 
-1. Semantic color tokens — avoid endless `lightGreyN`
-2. ThemeData integration — map Palette → `ColorScheme` / `TextTheme`
-3. Const constructors where possible
-4. Widget tests for BaseScaffold / TextWidget / TextFieldWidget
-5. Optional asset codegen (`flutter_gen`) with hand-written `Assets` as fallback
+1. Const constructors where possible
+2. Widget tests for BaseScaffold / TextWidget / TextFieldWidget
+3. Optional asset codegen (`flutter_gen`) with hand-written `Assets` as fallback
+4. Product apps replace sample/home routes with real `StatefulShellRoute` IA
 
 ---
 
 ## 10. Checklist
 
 - [ ] `core/core.dart` + `features/features.dart` compile
+- [ ] `MaterialApp.router` + `GoRouter` (splash → home or sample shell)
+- [ ] `setupLocator()` called from `main` (empty / services only)
 - [ ] `BaseScaffold` dismisses keyboard + SafeArea + padding
 - [ ] `TextWidget` uses `context.sp` + `SizeConfig.fontFamily`
 - [ ] `TextFieldWidget` supports title, validator, password
 - [ ] `Button` supports busy/disabled
-- [ ] `Palette`, `Assets`, `Weight` exported via `constants.dart`
+- [ ] `Palette` semantic tokens + ThemeData wiring
 - [ ] Spacing uses raw numbers (`context.verticalSpace(16)`), not a `Sizes` class
-- [ ] `context.verticalSpace` / `horizontalSpace` work off `SizeConfig`
 - [ ] Sample feature with barrels
+- [ ] Optional `--with-shell` does not ship unless requested

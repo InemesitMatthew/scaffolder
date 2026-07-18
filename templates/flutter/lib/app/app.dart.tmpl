@@ -6,17 +6,32 @@ class {{appClassName}} extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: '{{appTitle}}',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Palette.basePrimary,
-        ),
+        brightness: Brightness.light,
         fontFamily: SizeConfig.fontFamily,
+        colorScheme: ColorScheme.light(
+          primary: Palette.primary,
+          onPrimary: Palette.white,
+          secondary: Palette.accent,
+          onSecondary: Palette.white,
+          surface: Palette.surface,
+          onSurface: Palette.textPrimary,
+          error: Palette.danger,
+          onError: Palette.white,
+        ),
+        scaffoldBackgroundColor: Palette.bg,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Palette.bg,
+          foregroundColor: Palette.textPrimary,
+          elevation: 0,
+        ),
+        dividerColor: Palette.border,
       ),
-      home: const SplashView(),
+      routerConfig: appRouter,
     );
   }
 }
