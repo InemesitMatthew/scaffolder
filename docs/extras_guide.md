@@ -11,7 +11,7 @@ Optional packs (interactive multiselect or `--with-*` / `--no-*`). **Default: al
 | **Tabbed consumer app** | above + `shell` |
 | **Learning / first feature** | above + `sample-feature` |
 | **Auth soon** | add `auth` when you need secure storage + placeholder route |
-| **Ship to store / team** | add `l10n` early if multi-language; add `ci` if GitHub |
+| **Ship to store / team** | add `l10n` early if multi-language; add `ci` if GitHub; add `husky` for local commit/push gates |
 
 Avoid enabling everything “just in case” — each extra adds deps and files you must own.
 
@@ -27,6 +27,7 @@ Avoid enabling everything “just in case” — each extra adds deps and files 
 | `--with-logging` | talker_flutter + route observer | Console noise in debug |
 | `--with-env` | `AppConfig` / `--dart-define` | Wire real URLs yourself |
 | `--with-ci` | GitHub Actions analyze+test | Needs Flutter on Actions |
+| `--with-husky` | Local pre-commit format+analyze; pre-push `flutter test` | Run `dart run husky install` after `pub get` |
 
 ## Import habit
 

@@ -48,7 +48,7 @@ npx @senmid/scaffolder
 | 2 | **Create** a new app, or **Inject** into an existing one |
 | 3 | **Create:** name, org, empty output folder · **Inject:** path to project (package name from `pubspec.yaml`) |
 | 4 | Design defaults (optional) |
-| 5 | Optional extras multiselect (shell, network, sample CA, auth, l10n, logging, env, CI) |
+| 5 | Optional extras multiselect (shell, network, sample CA, auth, l10n, logging, env, CI, husky) |
 | 6 | Confirm |
 
 Then:
@@ -102,6 +102,7 @@ Spacing uses **raw numbers** (`context.verticalSpace(16)`) — no `Sizes` class.
 | `--with-logging` | `talker_flutter` `AppLogger` + route observer |
 | `--with-env` | `AppConfig` via `--dart-define` |
 | `--with-ci` | `.github/workflows/flutter_ci.yml` |
+| `--with-husky` | Dart husky `.husky/` pre-commit + pre-push |
 
 Use matching `--no-*` flags to force off in non-interactive runs. Defaults are **off**.
 

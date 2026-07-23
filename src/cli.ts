@@ -149,6 +149,8 @@ async function main(): Promise<void> {
     .option('--no-env', 'skip env/config')
     .option('--with-ci', 'include GitHub Actions flutter CI')
     .option('--no-ci', 'skip CI workflow')
+    .option('--with-husky', 'include Dart husky git hooks')
+    .option('--no-husky', 'skip husky git hooks')
     .option('--force', 'overwrite existing core/shared', false)
     .option('--clean-backups', 'delete *.scaffolder.bak after success')
     .option('--keep-backups', 'keep *.scaffolder.bak after success (skip prompt)')
@@ -181,6 +183,7 @@ async function main(): Promise<void> {
           withLogging: resolveOptionalBool(argv, '--with-logging', '--no-logging'),
           withEnv: resolveOptionalBool(argv, '--with-env', '--no-env'),
           withCi: resolveOptionalBool(argv, '--with-ci', '--no-ci'),
+          withHusky: resolveOptionalBool(argv, '--with-husky', '--no-husky'),
           cleanBackups,
         };
 

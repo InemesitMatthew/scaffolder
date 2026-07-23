@@ -13,6 +13,7 @@ import {
   removeDefaultCounterApp,
   writeAnalysisOptions,
   writeCiWorkflow,
+  writeHuskySetup,
   writeMainDart,
   markFailedCreate,
 } from './inject.js';
@@ -35,6 +36,7 @@ function pushExtraMessages(
   if (options.withLogging) extras.push('logging');
   if (options.withEnv) extras.push('env');
   if (options.withCi) extras.push('ci');
+  if (options.withHusky) extras.push('husky');
   if (extras.length === 0) {
     messages.push(pc.dim('Extras: none (baseline only)'));
   } else {
@@ -111,6 +113,10 @@ export async function runFlutterGenerator(
       messages.push(pc.green('Added .github/workflows/flutter_ci.yml'));
     }
 
+    if (writeHuskySetup(projectPath, options)) {
+      messages.push(pc.green('Added .husky/ pre-commit + pre-push hooks'));
+    }
+
     copyPackageAssetPlaceholders(projectPath);
     removeDefaultCounterApp(projectPath);
 
@@ -122,6 +128,9 @@ export async function runFlutterGenerator(
     messages.push(pc.bold('Next steps:'));
     messages.push(`  cd ${projectPath}`);
     messages.push('  flutter pub get');
+    if (options.withHusky) {
+      messages.push('  dart run husky install');
+    }
     if (options.withL10n) {
       messages.push('  flutter gen-l10n');
     }

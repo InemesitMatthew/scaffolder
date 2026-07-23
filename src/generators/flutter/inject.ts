@@ -345,6 +345,49 @@ export function writeCiWorkflow(
   return true;
 }
 
+export function writeHuskySetup(
+  projectPath: string,
+  options: FlutterScaffoldOptions,
+): boolean {
+  if (!options.withHusky) return false;
+  const templatesRoot = getFlutterTemplatesRoot();
+  const huskyRoot = join(templatesRoot, 'optional', 'husky');
+  const preCommit = join(huskyRoot, 'pre-commit.tmpl');
+  const prePush = join(huskyRoot, 'pre-push.tmpl');
+  if (!existsSync(preCommit) || !existsSync(prePush)) {
+    throw new Error(`Missing husky templates under ${huskyRoot}`);
+  }
+  const vars = buildVars(options);
+  writeRenderedFile(
+    join(projectPath, '.husky', 'pre-commit'),
+    readFileSync(preCommit, 'utf8'),
+    vars,
+    'optional/husky/pre-commit.tmpl',
+  );
+  writeRenderedFile(
+    join(projectPath, '.husky', 'pre-push'),
+    readFileSync(prePush, 'utf8'),
+    vars,
+    'optional/husky/pre-push.tmpl',
+  );
+  ensureHuskyGitattributes(projectPath);
+  return true;
+}
+
+/** Ensure husky LF rule is present in .gitattributes. */
+function ensureHuskyGitattributes(projectPath: string): void {
+  const line = '.husky/** text eol=lf';
+  const dest = join(projectPath, '.gitattributes');
+  if (!existsSync(dest)) {
+    writeFileSync(dest, `${line}\n`, 'utf8');
+    return;
+  }
+  const existing = readFileSync(dest, 'utf8');
+  if (existing.includes('.husky/**')) return;
+  const suffix = existing.endsWith('\n') ? '' : '\n';
+  writeFileSync(dest, `${existing}${suffix}${line}\n`, 'utf8');
+}
+
 export function writeAnalysisOptions(projectPath: string): {
   written: boolean;
   backedUp: boolean;
@@ -502,6 +545,22 @@ export function patchPubspec(
       toInsert.push(...d.line.split('\n'));
     }
     lines.splice(insertAt, 0, ...toInsert);
+  }
+
+  if (options.withHusky) {
+    let devDeps = findTopLevelSection(lines, 'dev_dependencies');
+    if (!devDeps) {
+      const depsAfter = findTopLevelSection(lines, 'dependencies');
+      const insertSectionAt = depsAfter ? depsAfter.end : lines.length;
+      lines.splice(insertSectionAt, 0, '', 'dev_dependencies:');
+      devDeps = findTopLevelSection(lines, 'dev_dependencies');
+    }
+    if (
+      devDeps &&
+      !sectionHasLine(lines, devDeps.start, devDeps.end, 'husky:')
+    ) {
+      lines.splice(devDeps.start + 1, 0, '  husky: ^0.1.7');
+    }
   }
 
   let flutter = findTopLevelSection(lines, 'flutter');

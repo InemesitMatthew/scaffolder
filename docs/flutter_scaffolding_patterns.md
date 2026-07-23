@@ -116,6 +116,7 @@ Interactive multiselect (or `--with-*` / `--no-*` flags). Default **off**.
 | Logging | `--with-logging` | `talker_flutter` + `TalkerRouteObserver` |
 | Env | `--with-env` | `AppConfig` via `--dart-define` |
 | CI | `--with-ci` | `.github/workflows/flutter_ci.yml` |
+| Husky | `--with-husky` | Dart husky `.husky/` pre-commit + pre-push |
 
 ---
 

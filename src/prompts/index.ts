@@ -41,6 +41,7 @@ export interface CliFlags {
   withLogging?: boolean;
   withEnv?: boolean;
   withCi?: boolean;
+  withHusky?: boolean;
   cleanBackups?: boolean;
 }
 
@@ -59,7 +60,8 @@ type ExtraKey =
   | 'l10n'
   | 'logging'
   | 'env'
-  | 'ci';
+  | 'ci'
+  | 'husky';
 
 interface ExtrasSelection {
   withShell: boolean;
@@ -70,6 +72,7 @@ interface ExtrasSelection {
   withLogging: boolean;
   withEnv: boolean;
   withCi: boolean;
+  withHusky: boolean;
 }
 
 function isCancel(value: unknown): boolean {
@@ -244,6 +247,7 @@ async function promptExtras(
     withLogging: flagOrDefault(flags.withLogging, false),
     withEnv: flagOrDefault(flags.withEnv, false),
     withCi: flagOrDefault(flags.withCi, false),
+    withHusky: flagOrDefault(flags.withHusky, false),
   };
 
   const anyFlagSet =
@@ -254,7 +258,8 @@ async function promptExtras(
     flags.withL10n !== undefined ||
     flags.withLogging !== undefined ||
     flags.withEnv !== undefined ||
-    flags.withCi !== undefined;
+    flags.withCi !== undefined ||
+    flags.withHusky !== undefined;
 
   if (!interactive || anyFlagSet) {
     return fromFlags;
@@ -304,6 +309,11 @@ async function promptExtras(
         label: 'CI workflow',
         hint: 'GitHub Actions analyze + test',
       },
+      {
+        value: 'husky',
+        label: 'Git hooks (husky)',
+        hint: 'pre-commit format+analyze; pre-push tests',
+      },
     ],
   });
   if (isCancel(selected)) {
@@ -321,6 +331,7 @@ async function promptExtras(
     withLogging: set.has('logging'),
     withEnv: set.has('env'),
     withCi: set.has('ci'),
+    withHusky: set.has('husky'),
   };
 }
 

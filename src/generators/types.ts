@@ -29,6 +29,8 @@ export interface FlutterScaffoldOptions {
   withEnv: boolean;
   /** GitHub Actions analyze + test workflow. */
   withCi: boolean;
+  /** Dart husky git hooks (pre-commit format+analyze, pre-push tests). */
+  withHusky: boolean;
   /** After success: remove *.scaffolder.bak (undefined = ask interactively). */
   cleanBackups?: boolean;
   appClassName: string;

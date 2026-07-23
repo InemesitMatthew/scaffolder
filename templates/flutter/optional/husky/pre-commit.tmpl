@@ -1,0 +1,97 @@
+#!/bin/sh
+# Single-pass hook — no husky.sh re-exec (avoids wrong `sh` / WSL).
+# Windows: prefer *.bat via cmd (FVM or PATH) — `dart` shebang can hit broken WSL.
+# Skip: HUSKY=0 git commit ...
+[ "${HUSKY:-1}" = "0" ] && exit 0
+
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+SDK_DART_BAT="$ROOT/.fvm/flutter_sdk/bin/dart.bat"
+WIN_SYSTEM32="/c/Windows/System32"
+WIN_POWERSHELL="/c/Windows/System32/WindowsPowerShell/v1.0"
+WIN_GIT_CMD="/c/Program Files/Git/cmd"
+WIN_GIT_CMD_X86="/c/Program Files (x86)/Git/cmd"
+# Minimal Windows PATH for *.bat (avoid appending ambient %PATH% — quote corruption).
+WIN_CORE_PATH='set "PATH=C:\Windows\System32;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Program Files\Git\cmd;C:\Program Files (x86)\Git\cmd"'
+
+unix_to_win() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$1"
+  else
+    echo "$1" | sed -e 's|^/\([a-zA-Z]\)/|\1:/|' -e 's|/|\\|g'
+  fi
+}
+
+# POSIX sh (Git hooks use #!/bin/sh) does not resolve *.bat via `command -v`.
+# Walk PATH with [ -f ] instead — works in bash and sh.
+find_on_path() {
+  name="$1"
+  _old_ifs=$IFS
+  IFS=:
+  for _dir in $PATH; do
+    if [ -n "$_dir" ] && [ -f "$_dir/$name" ]; then
+      printf '%s\n' "$_dir/$name"
+      IFS=$_old_ifs
+      unset _old_ifs _dir name
+      return 0
+    fi
+  done
+  IFS=$_old_ifs
+  unset _old_ifs _dir name
+  return 1
+}
+
+# Resolve Windows tools before PATH mutation (System32 bash = WSL launcher).
+DART_BAT="$(find_on_path dart.bat || true)"
+FLUTTER_BAT="$(find_on_path flutter.bat || true)"
+CMD_EXE="$(command -v cmd.exe || true)"
+if [ -z "$CMD_EXE" ] && [ -f "$WIN_SYSTEM32/cmd.exe" ]; then
+  CMD_EXE="$WIN_SYSTEM32/cmd.exe"
+fi
+
+# Git hook shells can start with a stripped PATH; make Windows core tools resolvable.
+# Keep /usr/bin ahead of System32 so `env bash` never picks WSL bash.exe.
+if [ -d "$WIN_SYSTEM32" ]; then
+  PATH="/usr/bin:$WIN_SYSTEM32:$PATH"
+fi
+if [ -d "$WIN_POWERSHELL" ]; then
+  PATH="$WIN_POWERSHELL:$PATH"
+fi
+if [ -d "$WIN_GIT_CMD" ]; then
+  PATH="$WIN_GIT_CMD:$PATH"
+elif [ -d "$WIN_GIT_CMD_X86" ]; then
+  PATH="$WIN_GIT_CMD_X86:$PATH"
+fi
+export PATH
+
+if [ -f "$SDK_DART_BAT" ] && [ -n "$CMD_EXE" ]; then
+  echo "Formatting..."
+  "$CMD_EXE" //c "$WIN_CORE_PATH && call .fvm\flutter_sdk\bin\dart.bat format lib test"
+  echo "Analyzing..."
+  "$CMD_EXE" //c "$WIN_CORE_PATH && call .fvm\flutter_sdk\bin\flutter.bat analyze --no-pub"
+elif [ -n "$CMD_EXE" ] && [ -n "$DART_BAT" ] && [ -n "$FLUTTER_BAT" ]; then
+  # Global Flutter on Windows: call absolute *.bat via cmd (no quote escapes).
+  DART_BAT_WIN="$(unix_to_win "$DART_BAT")"
+  FLUTTER_BAT_WIN="$(unix_to_win "$FLUTTER_BAT")"
+  echo "Formatting..."
+  "$CMD_EXE" //c "$WIN_CORE_PATH && call $DART_BAT_WIN format lib test"
+  echo "Analyzing..."
+  "$CMD_EXE" //c "$WIN_CORE_PATH && call $FLUTTER_BAT_WIN analyze --no-pub"
+else
+  if [ -d "$ROOT/.fvm/flutter_sdk/bin" ]; then
+    PATH="$ROOT/.fvm/flutter_sdk/bin:$PATH"
+    export PATH
+  fi
+  # On Windows, never invoke the Unix dart/flutter scripts — shebang hits WSL bash.
+  if [ -n "$CMD_EXE" ]; then
+    echo "pre-commit: could not find dart.bat/flutter.bat on PATH."
+    echo "  Install Flutter or run: fvm install && fvm use"
+    exit 1
+  fi
+  echo "Formatting..."
+  dart format lib test
+  echo "Analyzing..."
+  flutter analyze --no-pub
+fi

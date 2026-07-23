@@ -8,6 +8,7 @@ import {
   copyRenderedLibTemplates,
   cleanupLeftoverShell,
   buildVars,
+  writeHuskySetup,
 } from '../src/generators/flutter/inject.js';
 import type { FlutterScaffoldOptions } from '../src/generators/types.js';
 import {
@@ -40,6 +41,7 @@ function baseOptions(
     withLogging: false,
     withEnv: false,
     withCi: false,
+    withHusky: false,
     appClassName: 'DemoApp',
     appTitle: 'Demo App',
     ...overrides,
@@ -150,6 +152,55 @@ describe('patchPubspec', () => {
       assert.match(content, /dio:/);
       assert.match(content, /talker_flutter:/);
       assert.match(content, /# scaffolder: dart-define/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('adds husky under dev_dependencies when withHusky', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'scaffolder-pub-'));
+    try {
+      writeFileSync(
+        join(dir, 'pubspec.yaml'),
+        [
+          'name: demo_app',
+          'dependencies:',
+          '  flutter:',
+          '    sdk: flutter',
+          'dev_dependencies:',
+          '  flutter_test:',
+          '    sdk: flutter',
+          'flutter:',
+          '  uses-material-design: true',
+          '',
+        ].join('\n'),
+        'utf8',
+      );
+
+      patchPubspec(dir, baseOptions(dir, { withHusky: true }));
+      const content = readFileSync(join(dir, 'pubspec.yaml'), 'utf8');
+      assert.match(content, /husky:\s*\^0\.1\.7/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('writeHuskySetup', () => {
+  it('writes hooks and gitattributes when enabled', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'scaffolder-husky-'));
+    try {
+      assert.equal(writeHuskySetup(dir, baseOptions(dir)), false);
+      assert.equal(writeHuskySetup(dir, baseOptions(dir, { withHusky: true })), true);
+      assert.ok(existsSync(join(dir, '.husky', 'pre-commit')));
+      assert.ok(existsSync(join(dir, '.husky', 'pre-push')));
+      const attrs = readFileSync(join(dir, '.gitattributes'), 'utf8');
+      assert.match(attrs, /\.husky\/\*\* text eol=lf/);
+      const preCommit = readFileSync(join(dir, '.husky', 'pre-commit'), 'utf8');
+      assert.match(preCommit, /dart format lib test/);
+      assert.match(preCommit, /flutter analyze --no-pub/);
+      const prePush = readFileSync(join(dir, '.husky', 'pre-push'), 'utf8');
+      assert.match(prePush, /flutter test test\/ --no-pub/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
