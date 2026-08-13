@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+import 'package:{{packageName}}/features/shared/constants/palette.dart';
+
+import 'sizing_utils.dart';
+
+/// Centralized snackbar helpers for consistent user feedback.
+/// Prefer these over inline [ScaffoldMessenger] / [SnackBar] at call sites.
+abstract class SnackbarHelper {
+  /// Clears any currently visible snackbars.
+  static void dismissSnackBars(BuildContext context) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+  }
+
+  /// Floating success snackbar — white text on brand primary.
+  static void showSuccessSnackBar({
+    required BuildContext context,
+    required String text,
+    Duration duration = const Duration(milliseconds: 1200),
+  }) {
+    if (!context.mounted) return;
+    dismissSnackBars(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          text,
+          style: const TextStyle(
+            color: Palette.white,
+          ),
+        ),
+        backgroundColor: Palette.basePrimary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.min(10)),
+        ),
+        duration: duration,
+        margin: context.pad(const EdgeInsets.fromLTRB(20, 0, 20, 50)),
+      ),
+    );
+  }
+
+  /// Floating error snackbar — white text on danger.
+  /// Optional [SnackBarAction] only when both [actionLabel] and [onAction] are set.
+  static void showErrorSnackBar({
+    required BuildContext context,
+    required String text,
+    Duration duration = const Duration(seconds: 3),
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    if (!context.mounted) return;
+    dismissSnackBars(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          text,
+          style: const TextStyle(
+            color: Palette.white,
+          ),
+        ),
+        backgroundColor: Palette.danger,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.min(10)),
+        ),
+        duration: duration,
+        margin: context.pad(const EdgeInsets.fromLTRB(20, 0, 20, 50)),
+        action: (actionLabel != null && onAction != null)
+            ? SnackBarAction(
+                label: actionLabel,
+                textColor: Palette.white,
+                onPressed: onAction,
+              )
+            : null,
+      ),
+    );
+  }
+
+  /// Floating info snackbar — primary text on white with thin primary border.
+  static void showInfoSnackBar({
+    required BuildContext context,
+    required String text,
+    Duration duration = const Duration(milliseconds: 1500),
+  }) {
+    if (!context.mounted) return;
+    dismissSnackBars(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          text,
+          style: const TextStyle(
+            color: Palette.basePrimary,
+          ),
+        ),
+        backgroundColor: Palette.white,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.min(10)),
+          side: const BorderSide(width: 1, color: Palette.basePrimary),
+        ),
+        duration: duration,
+        margin: context.pad(const EdgeInsets.fromLTRB(20, 0, 20, 50)),
+      ),
+    );
+  }
+
+  /// Floating confirmation snackbar with icon + text on a dark background.
+  static void showConfirmationSnackBar({
+    required BuildContext context,
+    required String text,
+    required IconData icon,
+    Duration duration = const Duration(milliseconds: 1200),
+  }) {
+    if (!context.mounted) return;
+    dismissSnackBars(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 30,
+              width: 30,
+              decoration: const BoxDecoration(
+                color: Palette.baseSecondary,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: Palette.white600,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Palette.white.withValues(alpha: 0.8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Palette.baseBlack,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.min(16)),
+        ),
+        duration: duration,
+        margin: context.pad(const EdgeInsets.fromLTRB(20, 0, 20, 50)),
+      ),
+    );
+  }
+}

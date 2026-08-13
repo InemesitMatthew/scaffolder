@@ -44,7 +44,8 @@ lib/
 │   └── utils/
 │       ├── utils.dart
 │       ├── sizing_utils.dart     # SizeConfig + context.verticalSpace
-│       └── extension.dart
+│       ├── extension.dart
+│       └── snackbar_helper.dart  # SnackbarHelper (success/error/info/confirm)
 └── features/
     ├── features.dart             # ROOT mega feature barrel
     ├── shared/
